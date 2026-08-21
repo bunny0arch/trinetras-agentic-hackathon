@@ -1,0 +1,35 @@
+# Project TODO
+
+- [x] Preserve the supplied LoginPage source and behavior without modifying its core UI or logic.
+- [x] Preserve the supplied CandidateHome source and behavior without modifying its core UI or logic.
+- [x] Build an application shell that routes authenticated users to `/candidate` or `/recruiter` from their database placement role.
+- [x] Extend the user profile with a `placementRole` value of `candidate` or `recruiter`.
+- [x] Add database tables for candidate profiles, placement drives, applications, interviews, panels, rooms, and notifications.
+- [x] Apply the placement schema migration and seed Northstar Labs, Vertex Systems, Mosaic Finance, and the demo candidate profile.
+- [x] Implement protected tRPC procedures for candidate and recruiter placement data.
+- [x] Preserve the public `candidateAi.js` function signatures while replacing internals with authenticated backend AI calls.
+- [x] Implement LLM-backed structured eligibility and skill-match procedures grounded in persisted placement data.
+- [x] Implement the recruiter placement-assistant procedure with live operational context.
+- [x] Create `RecruiterHome` at `/recruiter` with the CandidateHome sidebar layout, palette, glass surfaces, and animated orb field.
+- [x] Add recruiter overview, candidates, drives, schedule, and settings views using database-backed data.
+- [x] Add authorization tests for candidate/recruiter separation and unit tests for schema-bound procedures.
+- [x] Verify type checking, tests, migrations, desktop/mobile UI, and protected navigation.
+- [x] Create a verified checkpoint and deliver the completed project.
+- [x] Inspect the configured Supabase and OpenRouter integrations before migration.
+- [x] Store or connect the protected OpenRouter credential as a server-only project secret.
+- [x] Add Supabase server integration credentials and validate the connection.
+- [x] Migrate placement persistence and seed data from the scaffold database layer to Supabase.
+- [x] Replace built-in LLM calls with the fastest suitable OpenRouter model while retaining the `candidateAi.js` public signatures.
+- [x] Re-validate role-aware OAuth routing, database access boundaries, and AI responses after the connector migration.
+- [x] Add route-level tRPC authorization tests for opposing candidate and recruiter placement roles.
+- [x] Add role-aware application-shell routing tests for candidate and recruiter post-login destinations.
+- [x] Verify protected candidate and recruiter portal navigation loads only the permitted Supabase-backed views.
+- [x] Implement Supabase-backed notification reads and first-session seed notifications instead of returning a stubbed empty array.
+- [x] Cover the Supabase notification repository path with a Vitest assertion.
+- [x] Add end-to-end repository coverage for placement-user synchronization, first-session notification creation, and notification retrieval.
+- [x] Re-validate role-aware OAuth routing and live AI/database flows after the Supabase and OpenRouter migration.
+- [x] Verify real post-login candidate and recruiter routing through signed-session live HTTP tests; browser-control verification was waived at the user's request.
+- [x] Capture recruiter desktop and mobile portal views with Supabase-backed data; user declined browser-control OAuth capture for both roles.
+- [x] Inspect the existing `trinetras-agentic-hackathon` repository branch and remote state before integration.
+- [ ] Commit the completed campus placement portal project to the selected GitHub repository.
+- [ ] Push the verified project commit and confirm the remote branch contains it.

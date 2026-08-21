@@ -1,0 +1,46 @@
+.recruiter-home .recruiter-hero .readiness-score strong { color: var(--coral); }
+.recruiter-home .drive-live, .recruiter-home .drive-draft { padding: 5px 8px; font-size: .61rem; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
+.recruiter-home .drive-live { background: rgba(114, 223, 181, .14); color: var(--mint); }
+.recruiter-home .drive-draft { background: rgba(255, 209, 102, .14); color: var(--amber); }
+.recruiter-home .recruiter-table { display: grid; gap: 14px; }
+.recruiter-home .candidate-record { padding: 20px; border: 1px solid rgba(255,255,255,.07); border-radius: 16px; background: rgba(255,253,248,.86); box-shadow: 0 14px 40px rgba(0,0,0,.10); backdrop-filter: blur(14px); }
+.recruiter-home .candidate-record-top { display: flex; align-items: center; gap: 12px; }
+.recruiter-home .candidate-record-top > div { min-width: 0; flex: 1; }
+.recruiter-home .candidate-record-top strong, .recruiter-home .candidate-record-top small { display: block; }
+.recruiter-home .candidate-record-top small { margin-top: 4px; color: #3f4b44; font-size: .72rem; }
+.recruiter-home .candidate-record-grid { display: grid; grid-template-columns: 1.3fr .55fr 1fr .8fr; gap: 14px; margin: 20px 0 14px; padding-top: 15px; border-top: 1px solid rgba(32,38,33,.1); }
+.recruiter-home .candidate-record-grid span, .recruiter-home .candidate-record-grid strong { display: block; }
+.recruiter-home .candidate-record-grid span { color: #3f4b44; font-size: .62rem; text-transform: uppercase; letter-spacing: .08em; }
+.recruiter-home .candidate-record-grid strong { margin-top: 6px; font-size: .76rem; }
+.recruiter-home .candidate-record-actions { display: flex; gap: 18px; }
+.recruiter-home .recruiter-drive-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.recruiter-home .drive-criteria { display: flex; flex-wrap: wrap; gap: 6px; margin: 16px 0 12px; }
+.recruiter-home .drive-criteria span { padding: 5px 7px; background: rgba(114,223,181,.10); color: #24753e; font-size: .62rem; font-weight: 800; }
+.recruiter-home .drive-skills { min-height: 38px; margin: 0 0 16px; color: #3f4b44; font-size: .7rem; line-height: 1.55; }
+.recruiter-home .dark-action { border: 0; background: var(--coral); color: #171d21; cursor: pointer; font-size: .7rem; font-weight: 800; }
+.recruiter-home .settings-copy { margin: -12px 0 24px; color: #3f4b44; font-size: .78rem; line-height: 1.65; }
+.recruiter-home .data-state { color: #3f4b44; }
+@media (max-width: 1000px) { .recruiter-home .recruiter-drive-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .recruiter-home .candidate-record-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 700px) {
+  .recruiter-home { display: block; min-width: 0; }
+  .recruiter-home .candidate-sidebar { position: static; width: 100%; min-height: auto; box-sizing: border-box; padding: 18px; border-right: 0; border-bottom: 1px solid var(--line); }
+  .recruiter-home .candidate-content { width: 100%; margin-left: 0; }
+  .recruiter-home .candidate-header { min-height: 60px; padding: 0 18px; }
+  .recruiter-home .sidebar-profile { margin: 24px 8px 15px; padding-bottom: 15px; }
+  .recruiter-home .candidate-nav { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .recruiter-home .assistant-rail { margin: 18px 4px 8px; }
+  .recruiter-home .sidebar-signout { position: absolute; top: 18px; right: 14px; width: auto; }
+  .recruiter-home .candidate-page { width: calc(100% - 32px); padding-top: 34px; }
+  .recruiter-home .candidate-hero, .recruiter-home .view-heading { display: block; }
+  .recruiter-home .candidate-hero h1, .recruiter-home .view-heading h1 { font-size: clamp(2.8rem, 13vw, 3.4rem); }
+  .recruiter-home .readiness-panel { margin-top: 26px; }
+  .recruiter-home .stat-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .recruiter-home .stat-row > div:first-child { padding-left: 14px; }
+  .recruiter-home .workspace-columns { grid-template-columns: 1fr; gap: 32px; }
+  .recruiter-home .opportunity-grid, .recruiter-home .full-grid, .recruiter-home .recruiter-drive-grid { grid-template-columns: 1fr; }
+  .recruiter-home .candidate-record { padding: 16px; }
+  .recruiter-home .candidate-record-grid { grid-template-columns: 1fr; gap: 10px; }
+  .recruiter-home .candidate-record-top { align-items: flex-start; }
+  .recruiter-home .timeline-row { grid-template-columns: 46px 1fr; }
+  .recruiter-home .event-status { grid-column: 2; width: fit-content; }
+}

@@ -31,5 +31,5 @@
 - [x] Verify real post-login candidate and recruiter routing through signed-session live HTTP tests; browser-control verification was waived at the user's request.
 - [x] Capture recruiter desktop and mobile portal views with Supabase-backed data; user declined browser-control OAuth capture for both roles.
 - [x] Inspect the existing `trinetras-agentic-hackathon` repository branch and remote state before integration.
-- [ ] Commit the completed campus placement portal project to the selected GitHub repository.
-- [ ] Push the verified project commit and confirm the remote branch contains it.
+- [x] Commit the completed campus placement portal project to the selected GitHub repository.
+- [x] Push the verified project commit and confirm the remote branch contains it.

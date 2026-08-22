@@ -14,7 +14,7 @@ import {
   setSavedDrive,
   applyCandidateToDrive,
 } from "../db";
-import { requirePlacementRole } from "../placementAuth";
+import { requireLivePlacementMutation, requirePlacementRole } from "../placementAuth";
 import { protectedProcedure, router } from "../_core/trpc";
 
 export const placementRouter = router({
@@ -40,12 +40,14 @@ export const placementRouter = router({
       .input(z.object({ driveId: z.string().uuid(), saved: z.boolean() }))
       .mutation(async ({ ctx, input }) => {
         requirePlacementRole(ctx.user, "candidate");
+        requireLivePlacementMutation(ctx.user);
         return setSavedDrive(ctx.user.id, input.driveId, input.saved);
       }),
     applyToDrive: protectedProcedure
       .input(z.object({ driveId: z.string().uuid() }))
       .mutation(async ({ ctx, input }) => {
         requirePlacementRole(ctx.user, "candidate");
+        requireLivePlacementMutation(ctx.user);
         return applyCandidateToDrive(ctx.user.id, input.driveId);
       }),
   }),
@@ -86,6 +88,7 @@ export const placementRouter = router({
       .input(z.object({ applicationId: z.string().uuid(), status: z.enum(["submitted", "shortlisted", "assessment_pending", "interviewing", "rejected", "offered"]) }))
       .mutation(async ({ ctx, input }) => {
         requirePlacementRole(ctx.user, "recruiter");
+        requireLivePlacementMutation(ctx.user);
         return updatePlacementApplicationStatus(input.applicationId, input.status);
       }),
     verifyApplication: protectedProcedure

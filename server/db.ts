@@ -106,6 +106,37 @@ export async function getCandidateProfileForUser(userId: number) {
   return profile ? candidateDto(profile) : undefined;
 }
 
+export async function ensureDemoCandidateProfile(userId: number) {
+  const identity = unwrap(await supabase.from("placement_users").select("id").eq("manus_user_id", userId).limit(1).maybeSingle()) as { id: string } | null;
+  if (!identity) throw new Error("Presentation identity could not be synchronized.");
+
+  const linked = unwrap(await supabase.from("candidate_profiles").select("*").eq("placement_user_id", identity.id).limit(1).maybeSingle()) as CandidateProfile | null;
+  if (linked) return candidateDto(linked);
+
+  const existingDemo = unwrap(await supabase.from("candidate_profiles").select("*").eq("student_code", "DEMO-2026").limit(1).maybeSingle()) as CandidateProfile | null;
+  if (existingDemo) {
+    const updated = unwrap(await supabase.from("candidate_profiles").update({ placement_user_id: identity.id, email: "test+candidate@presentation.local", updated_at: new Date().toISOString() }).eq("id", existingDemo.id).select("*").single()) as CandidateProfile;
+    return candidateDto(updated);
+  }
+
+  const created = unwrap(await supabase.from("candidate_profiles").insert({
+    placement_user_id: identity.id,
+    student_code: "DEMO-2026",
+    full_name: "Presentation Candidate",
+    email: "test+candidate@presentation.local",
+    batch: "2026",
+    department: "Computer Science",
+    cgpa: 8.4,
+    backlogs: 0,
+    skills: ["React", "JavaScript", "CSS", "Figma", "SQL"],
+    projects: ["Placement companion"],
+    certifications: ["SQL Fundamentals"],
+    profile_completion: 84,
+    placement_status: "interviewing",
+  }).select("*").single()) as CandidateProfile;
+  return candidateDto(created);
+}
+
 export async function listSavedDriveIds(userId: number) {
   const profile = await getCandidateProfileForUser(userId);
   if (!profile) return [];

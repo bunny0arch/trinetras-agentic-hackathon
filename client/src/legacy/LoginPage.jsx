@@ -42,6 +42,7 @@ function LoginPage() {
   const [showSignupPassword, setShowSignupPassword] = useState(false)
   const [showSupportNotice, setShowSupportNotice] = useState(false)
   const [closingSupportNotice, setClosingSupportNotice] = useState(false)
+  const [demoState, setDemoState] = useState({ status: 'idle', message: '' })
   const [form, setForm] = useState({ email: '', password: '' })
   const [signUpForm, setSignUpForm] = useState({
     name: '',
@@ -97,6 +98,37 @@ function LoginPage() {
     event.preventDefault()
     if (!selectedRole) return
     startLogin(selectedRole)
+  }
+
+  const handleDemoLogin = async () => {
+    if (!selectedRole || demoState.status === 'loading') return
+    setDemoState({ status: 'loading', message: '' })
+    try {
+      const response = await fetch('/api/trpc/auth.demoLogin', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          json: {
+            username: 'test',
+            password: 'test',
+            placementRole: selectedRole,
+          },
+        }),
+      })
+      const payload = await response.json().catch(() => null)
+      const message = payload?.error?.json?.message || payload?.error?.message
+      if (!response.ok || !payload?.result?.data?.json?.success) {
+        throw new Error(message || 'Presentation demo access is unavailable.')
+      }
+      setDemoState({ status: 'success', message: 'Demo session created. Loading the workspace…' })
+      window.location.assign(selectedRole === 'recruiter' ? '/recruiter' : '/candidate')
+    } catch (error) {
+      setDemoState({
+        status: 'error',
+        message: error instanceof Error ? error.message : 'Unable to start the presentation demo.',
+      })
+    }
   }
 
   const handleCreateAccount = (event) => {
@@ -286,6 +318,27 @@ function LoginPage() {
                   Create account
                 </button>
               </form>
+
+              <div className="demo-access-card" aria-label="Presentation demo access">
+                <span className="eyebrow-small">Presentation demo</span>
+                <p>
+                  Use the isolated demo account <strong>test</strong> / <strong>test</strong>. This is
+                  presentation-only access, not a production user account.
+                </p>
+                <button
+                  type="button"
+                  className="secondary-action full-width"
+                  onClick={handleDemoLogin}
+                  disabled={demoState.status === 'loading'}
+                >
+                  {demoState.status === 'loading' ? 'Opening demo…' : `Open ${activeRole.label} demo`}
+                </button>
+                {demoState.message && (
+                  <span className={`demo-status ${demoState.status}`} role="status" aria-live="polite">
+                    {demoState.message}
+                  </span>
+                )}
+              </div>
             </div>
           </section>
         )}

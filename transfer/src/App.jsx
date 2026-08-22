@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 import CandidateHome from './CandidateHome.jsx'
+import RecruiterHome from './RecruiterHome.jsx'
 
 const roles = {
   candidate: {
@@ -52,6 +53,7 @@ function LoginPage() {
   })
   const [ripples, setRipples] = useState([])
   const [isCandidateHomeVisible, setIsCandidateHomeVisible] = useState(false)
+  const [isRecruiterHomeVisible, setIsRecruiterHomeVisible] = useState(false)
 
   const activeRole = useMemo(
     () => (selectedRole ? roles[selectedRole] : null),
@@ -101,6 +103,10 @@ function LoginPage() {
       setIsCandidateHomeVisible(true)
       return
     }
+    if (selectedRole === 'recruiter') {
+      setIsRecruiterHomeVisible(true)
+      return
+    }
     console.log(`Login as ${selectedRole} with`, form)
   }
 
@@ -139,6 +145,10 @@ function LoginPage() {
 
   if (isCandidateHomeVisible) {
     return <CandidateHome onLogout={() => setIsCandidateHomeVisible(false)} />
+  }
+
+  if (isRecruiterHomeVisible) {
+    return <RecruiterHome onLogout={() => setIsRecruiterHomeVisible(false)} />
   }
 
   const resetCreateAccount = () => {

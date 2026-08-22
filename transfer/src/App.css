@@ -23,6 +23,7 @@
   position: absolute;
   inset: 0;
   z-index: 1;
+  opacity: 1;
   pointer-events: none;
 }
 
@@ -305,13 +306,13 @@
 
 .role-button.candidate.selected {
   border-color: #ffb45f;
-  background: rgba(255, 126, 74, 0.22);
+  background: rgba(255, 126, 74, .22);
   color: #fff8ed;
 }
 
 .role-button.recruiter.selected {
   border-color: #b7f46f;
-  background: rgba(183, 244, 111, 0.16);
+  background: rgba(183, 244, 111, .28);
   color: #f8ffe9;
 }
 

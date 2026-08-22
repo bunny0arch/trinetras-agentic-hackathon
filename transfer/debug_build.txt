@@ -1,0 +1,28 @@
+
+> agentic-day-hackathon@0.0.0 build
+> vite build
+
+[36mvite v8.2.2 [32mbuilding client environment for production...[36m[39m
+transforming...
+✓ 20 modules transformed.
+[31m✗[39m Build failed in 2.02s
+[31merror during build:
+[31mBuild failed with 1 error:
+
+[31m[builtin:vite-transform] [0mUnexpected token
+    [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m src/RecruiterHome.jsx:70:2 [38;5;246m][0m
+    [38;5;246m│[0m
+ [38;5;246m70 │[0m [38;5;249m+[0m}
+ [38;5;240m   │[0m  ┬  
+ [38;5;240m   │[0m  ╰── 
+[38;5;246m────╯[0m
+[31m
+    at aggregateBindingErrorsIntoJsError (file:///C:/Users/muppa/OneDrive/Desktop/Agentic%20day%20Hackathon/node_modules/rolldown/dist/shared/error-NcRuXAVN.mjs:48:18)
+    at unwrapBindingResult (file:///C:/Users/muppa/OneDrive/Desktop/Agentic%20day%20Hackathon/node_modules/rolldown/dist/shared/error-NcRuXAVN.mjs:18:128)
+    at #build (file:///C:/Users/muppa/OneDrive/Desktop/Agentic%20day%20Hackathon/node_modules/rolldown/dist/shared/rolldown-vcii7mEa.mjs:132:34)
+    at async buildEnvironment (file:///C:/Users/muppa/OneDrive/Desktop/Agentic%20day%20Hackathon/node_modules/vite/dist/node/chunks/node.js:33821:66)
+    at async Object.build (file:///C:/Users/muppa/OneDrive/Desktop/Agentic%20day%20Hackathon/node_modules/vite/dist/node/chunks/node.js:34242:19)
+    at async Object.buildApp (file:///C:/Users/muppa/OneDrive/Desktop/Agentic%20day%20Hackathon/node_modules/vite/dist/node/chunks/node.js:34239:153)
+    at async CAC.<anonymous> (file:///C:/Users/muppa/OneDrive/Desktop/Agentic%20day%20Hackathon/node_modules/vite/dist/node/cli.js:776:3) {
+  errors: [Getter/Setter]
+}[39m

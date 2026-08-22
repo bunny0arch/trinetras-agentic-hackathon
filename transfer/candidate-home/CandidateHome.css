@@ -176,19 +176,233 @@
 }
 
 .candidate-content {
+  position: relative;
+  isolation: isolate;
   margin-left: 236px;
+  background: #f7f4ec;
+}
+
+.candidate-content::before,
+.candidate-content::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.candidate-content::before {
+  top: 86px;
+  right: -120px;
+  width: 430px;
+  height: 210px;
+  border: 1px solid rgba(239, 107, 88, .24);
+  background: rgba(255, 98, 117, .08);
+  transform: rotate(-17deg);
+  box-shadow: 0 0 0 26px rgba(255, 209, 102, .07), 0 0 0 52px rgba(200, 255, 131, .05);
+}
+
+.candidate-content::after {
+  left: -92px;
+  bottom: 120px;
+  width: 300px;
+  height: 170px;
+  border: 1px solid rgba(114, 223, 181, .28);
+  background: rgba(114, 223, 181, .08);
+  transform: rotate(23deg);
+}
+
+.candidate-orb-field {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.candidate-orb {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  opacity: .42;
+  box-shadow: 0 0 18px 5px currentColor;
+  animation: candidateOrbDrift 22s ease-in-out infinite, candidateOrbTwist 16s ease-in-out infinite;
+}
+
+.candidate-orb::before,
+.candidate-orb::after {
+  content: '';
+  position: absolute;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  animation: candidateOrbMix 13s ease-in-out infinite alternate;
+}
+
+.candidate-orb::before { inset: -8px; opacity: .5; }
+.candidate-orb::after { inset: 5px; opacity: .72; }
+
+.orb-coral { top: 14%; left: 28%; color: var(--coral); background: var(--coral); }
+.orb-amber { top: 30%; right: 19%; color: var(--amber); background: var(--amber); animation-delay: -5s, -8s; }
+.orb-lime { top: 61%; left: 16%; color: #9cc956; background: #9cc956; animation-delay: -10s, -3s; }
+.orb-mint { bottom: 13%; right: 28%; color: var(--mint); background: var(--mint); animation-delay: -15s, -11s; }
+.orb-coral-small { top: 47%; right: 7%; width: 11px; height: 11px; color: #f18b78; background: #f18b78; animation-delay: -7s, -4s; }
+.orb-amber-small { bottom: 24%; left: 43%; width: 10px; height: 10px; color: #e4af48; background: #e4af48; animation-delay: -12s, -7s; }
+
+@keyframes candidateOrbDrift {
+  0%, 100% { margin: 0; }
+  35% { margin: -18px 14px; }
+  70% { margin: 12px -18px; }
+}
+
+@keyframes candidateOrbTwist {
+  0%, 100% { transform: rotate(0deg) scale(1); border-radius: 50%; }
+  50% { transform: rotate(180deg) scale(1.28); border-radius: 38% 62% 58% 42%; }
+}
+
+@keyframes candidateOrbMix {
+  0% { transform: rotate(0deg) scale(.72); border-radius: 45% 55% 62% 38%; }
+  100% { transform: rotate(-220deg) scale(1.18); border-radius: 64% 36% 42% 58%; }
 }
 
 .candidate-header {
+  position: relative;
+  z-index: 1;
   min-height: 68px;
   border-bottom-color: rgba(255, 255, 255, .06);
-  background: rgba(16, 20, 22, .62);
+  background: rgba(255, 252, 245, .92);
   backdrop-filter: blur(18px);
 }
 
 .candidate-page {
+  position: relative;
+  z-index: 1;
   width: min(1160px, calc(100% - 96px));
   padding-top: 62px;
+  color: #202621;
+}
+
+.candidate-page h1,
+.candidate-page h2,
+.candidate-page h3,
+.candidate-page strong,
+.candidate-page .job-details,
+.candidate-page .notification-card p b {
+  color: #202621;
+}
+
+.candidate-page p,
+.candidate-page small,
+.candidate-page time,
+.candidate-page .job-location,
+.candidate-page .job-meta span {
+  color: #3f4b44;
+}
+
+.candidate-page .workspace-eyebrow {
+  color: #c84f43;
+}
+
+.candidate-page .text-button,
+.candidate-page .card-link,
+.candidate-page .row-action,
+.candidate-page .job-details {
+  color: #b84339;
+}
+
+.candidate-page .match-score,
+.candidate-page .event-status,
+.candidate-page .pipeline-summary,
+.candidate-page .done,
+.candidate-page .profile-check {
+  color: #24753e;
+}
+
+.candidate-page .readiness-panel span,
+.candidate-page .readiness-panel small,
+.candidate-page .stat-row span,
+.candidate-page .stat-row small {
+  color: #46534b;
+}
+
+.candidate-page .workspace-eyebrow {
+  font-size: .7rem;
+  letter-spacing: .08em;
+}
+
+.candidate-page .candidate-hero h1,
+.candidate-page .view-heading h1 {
+  font-size: clamp(3rem, 5.4vw, 5.8rem);
+  letter-spacing: -.075em;
+}
+
+.candidate-page .candidate-hero p,
+.candidate-page .view-heading p {
+  font-size: 1rem;
+  line-height: 1.65;
+}
+
+.candidate-page .section-bar h2 {
+  font-size: 1.55rem;
+}
+
+.candidate-page .stat-row {
+  margin-bottom: 62px;
+}
+
+.candidate-page .stat-row > div {
+  min-height: 92px;
+  padding: 12px 20px;
+}
+
+.candidate-page .stat-row span {
+  font-size: .72rem;
+}
+
+.candidate-page .stat-row strong {
+  margin: 6px 0 0;
+  font-size: 2.25rem;
+}
+
+.candidate-page .stat-row small {
+  display: none;
+}
+
+.candidate-page .opportunity-card {
+  min-height: 238px;
+  padding: 24px;
+}
+
+.candidate-page .opportunity-card h3 {
+  font-size: 1.16rem;
+}
+
+.candidate-page .job-location {
+  margin-bottom: 20px;
+  font-size: .78rem;
+}
+
+.candidate-page .job-meta span,
+.candidate-page .eligibility {
+  font-size: .7rem;
+}
+
+.candidate-page .action-card h3 {
+  font-size: 1.25rem;
+  line-height: 1.15;
+}
+
+.candidate-page .action-card p,
+.candidate-page .notification-card p {
+  font-size: .82rem;
+  line-height: 1.65;
+}
+
+.candidate-page .timeline-row h3 {
+  font-size: 1rem;
+}
+
+.candidate-page .timeline-row p {
+  font-size: .8rem;
 }
 
 .candidate-hero {
@@ -210,9 +424,23 @@
 .assistant-panel,
 .opportunity-modal {
   border: 1px solid rgba(255, 255, 255, .07);
-  background: rgba(23, 29, 33, .68);
+  background: rgba(255, 253, 248, .88);
   box-shadow: 0 14px 40px rgba(0, 0, 0, .12);
   backdrop-filter: blur(14px);
+}
+
+.candidate-page .section-bar {
+  position: relative;
+}
+
+.candidate-page .section-bar::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: -8px;
+  width: 38px;
+  height: 3px;
+  background: var(--coral);
 }
 
 .readiness-panel {
@@ -229,7 +457,7 @@
 .stat-row > div {
   min-height: 104px;
   border-right: 1px solid rgba(255, 255, 255, .07);
-  background: transparent;
+  background: rgba(255, 253, 248, .42);
 }
 
 .stat-row > div:first-child {
@@ -254,6 +482,14 @@
   border-radius: 16px;
 }
 
+.candidate-page .opportunity-card:nth-child(2) {
+  border-top: 2px solid var(--lime);
+}
+
+.candidate-page .action-card:nth-child(2) {
+  border-left: 2px solid var(--mint);
+}
+
 .opportunity-card:hover {
   transform: translateY(-3px);
   border-color: rgba(255, 98, 117, .28);
@@ -274,7 +510,22 @@
 }
 
 .notification-card {
-  background: rgba(255, 255, 255, .025);
+  background: rgba(255, 253, 248, .68);
+}
+
+.candidate-page .schedule-preview {
+  position: relative;
+}
+
+.candidate-page .schedule-preview::before {
+  content: '↗';
+  position: absolute;
+  right: 4px;
+  top: 20px;
+  color: var(--amber);
+  font-size: 2rem;
+  font-weight: 800;
+  transform: rotate(-20deg);
 }
 
 .schedule-preview {

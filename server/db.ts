@@ -46,7 +46,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       unwrap(await supabase.from("candidate_profiles").update({ placement_user_id: placementIdentity.id }).eq("id", candidateProfile.id));
     }
   }
-  const existingNotification = unwrap(await supabase.from("notifications").select("id").eq("placement_user_id", placementIdentity.id).limit(1));
+  const existingNotification = unwrap(await supabase.from("notifications").select("id").eq("placement_user_id", placementIdentity.id).limit(1)) as Array<{ id: string }> | null;
   if (!existingNotification?.[0]) {
     unwrap(await supabase.from("notifications").insert({
       placement_user_id: placementIdentity.id,

@@ -1,5 +1,14 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "express",
-  "buildCommand": "pnpm build"
+  "framework": "vite",
+  "buildCommand": "pnpm build",
+  "outputDirectory": "public",
+  "rewrites": [
+    { "source": "/api/trpc", "destination": "/api/index?path=trpc" },
+    { "source": "/api/trpc/:path*", "destination": "/api/index?path=trpc/:path*" },
+    { "source": "/api/oauth", "destination": "/api/index?path=oauth" },
+    { "source": "/api/oauth/:path*", "destination": "/api/index?path=oauth/:path*" },
+    { "source": "/candidate", "destination": "/" },
+    { "source": "/recruiter", "destination": "/" }
+  ]
 }

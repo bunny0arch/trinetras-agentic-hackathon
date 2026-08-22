@@ -1,6 +1,6 @@
-import { createApp } from "../dist/index.js";
+import { createApiApp } from "../dist/api.js";
 
-const app = createApp();
+const app = createApiApp();
 
 export default function handler(req: any, res: any) {
   const sourcePath = typeof req.query?.path === "string" ? req.query.path : "";

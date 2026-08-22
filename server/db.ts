@@ -100,6 +100,10 @@ export async function ensurePlacementDemoData() {
 }
 
 export async function getCandidateProfileForUser(userId: number) {
+  if (userId === -1001) {
+    const demoProfile = unwrap(await supabase.from("candidate_profiles").select("*").eq("student_code", "DEMO-2026").limit(1).maybeSingle()) as CandidateProfile | null;
+    return demoProfile ? candidateDto(demoProfile) : undefined;
+  }
   const identity = unwrap(await supabase.from("placement_users").select("id").eq("manus_user_id", userId).limit(1).maybeSingle()) as { id: string } | null;
   if (!identity) return undefined;
   const profile = unwrap(await supabase.from("candidate_profiles").select("*").eq("placement_user_id", identity.id).limit(1).maybeSingle()) as CandidateProfile | null;
@@ -187,6 +191,7 @@ export async function getPlacementSnapshot() {
 }
 
 export async function listNotificationsForUser(userId: number) {
+  if (userId === -1001 || userId === -1002) return [];
   const identity = unwrap(await supabase.from("placement_users").select("id").eq("manus_user_id", userId).limit(1).maybeSingle()) as { id: string } | null;
   if (!identity) return [];
   const rows = unwrap(await supabase.from("notifications").select("*").eq("placement_user_id", identity.id).order("created_at", { ascending: false })) as Array<{ id: string; title: string; body: string; kind: string; created_at: string }>;

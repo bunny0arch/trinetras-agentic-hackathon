@@ -4,7 +4,6 @@ import { z } from "zod";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { ENV } from "./_core/env";
 import { sdk } from "./_core/sdk";
-import * as db from "./db";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
 import { aiRouter } from "./routers/ai";
@@ -28,30 +27,7 @@ export const appRouter = router({
         if (input.username !== ENV.demoUsername || input.password !== ENV.demoPassword) {
           throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid presentation credentials." });
         }
-        if (!ENV.cookieSecret) {
-          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Session signing is not configured." });
-        }
-
-        const openId = `demo-presentation-${input.placementRole}`;
-        const demoName = input.placementRole === "candidate" ? "Presentation Candidate" : "Presentation Recruiter";
-        await db.upsertUser({
-          openId,
-          name: demoName,
-          email: `test+${input.placementRole}@presentation.local`,
-          loginMethod: "demo",
-          role: "user",
-          placementRole: input.placementRole,
-          lastSignedIn: new Date(),
-        });
-        const demoUser = await db.getUserByOpenId(openId);
-        if (!demoUser) {
-          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Presentation account could not be loaded." });
-        }
-        if (input.placementRole === "candidate") {
-          await db.ensureDemoCandidateProfile(demoUser.id);
-        }
-
-        const token = await sdk.createSessionToken(openId, { name: demoName });
+        const token = await sdk.createDemoSessionToken(input.placementRole);
         ctx.res.cookie(COOKIE_NAME, token, {
           ...getSessionCookieOptions(ctx.req),
           maxAge: 24 * 60 * 60 * 1000,

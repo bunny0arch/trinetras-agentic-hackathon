@@ -1,6 +1,7 @@
 import { AXIOS_TIMEOUT_MS, COOKIE_NAME, ONE_YEAR_MS, decodeOAuthState } from "@shared/const";
 import { ForbiddenError } from "@shared/_core/errors";
 import axios, { type AxiosInstance } from "axios";
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { parse as parseCookieHeader } from "cookie";
 import type { Request } from "express";
 import { SignJWT, jwtVerify } from "jose";
@@ -158,6 +159,66 @@ class SDKServer {
     return new TextEncoder().encode(secret);
   }
 
+  private getDemoSessionSecret() {
+    // This key is intentionally derived only for the opt-in, read-only demo
+    // channel. It is never accepted by normal OAuth sessions or user auth.
+    return `presentation-demo-v1:${ENV.demoUsername}:${ENV.demoPassword}`;
+  }
+
+  private encodeDemoPart(value: string) {
+    return Buffer.from(value, "utf8").toString("base64url");
+  }
+
+  private decodeDemoPart(value: string) {
+    return Buffer.from(value, "base64url").toString("utf8");
+  }
+
+  async createDemoSessionToken(
+    placementRole: "candidate" | "recruiter",
+    options: { expiresInMs?: number } = {}
+  ): Promise<string> {
+    const expiresAt = Date.now() + (options.expiresInMs ?? 24 * 60 * 60 * 1000);
+    const payload = this.encodeDemoPart(JSON.stringify({
+      openId: `demo-presentation-${placementRole}`,
+      placementRole,
+      name: placementRole === "candidate" ? "Presentation Candidate" : "Presentation Recruiter",
+      expiresAt,
+    }));
+    const signature = createHmac("sha256", this.getDemoSessionSecret()).update(payload).digest("base64url");
+    return `demo.${payload}.${signature}`;
+  }
+
+  private verifyDemoSession(cookieValue: string | undefined | null): {
+    openId: string;
+    placementRole: "candidate" | "recruiter";
+    name: string;
+  } | null {
+    if (!ENV.demoLoginEnabled || !cookieValue?.startsWith("demo.")) return null;
+    const parts = cookieValue.split(".");
+    if (parts.length !== 3) return null;
+    const [, payload, signature] = parts;
+    const expected = createHmac("sha256", this.getDemoSessionSecret()).update(payload).digest("base64url");
+    const actualBytes = Buffer.from(signature, "base64url");
+    const expectedBytes = Buffer.from(expected, "base64url");
+    if (actualBytes.length !== expectedBytes.length || !timingSafeEqual(actualBytes, expectedBytes)) return null;
+    try {
+      const parsed = JSON.parse(this.decodeDemoPart(payload)) as Record<string, unknown>;
+      if (
+        parsed.openId !== "demo-presentation-candidate" &&
+        parsed.openId !== "demo-presentation-recruiter"
+      ) return null;
+      if (parsed.placementRole !== "candidate" && parsed.placementRole !== "recruiter") return null;
+      if (typeof parsed.name !== "string" || typeof parsed.expiresAt !== "number" || parsed.expiresAt <= Date.now()) return null;
+      return {
+        openId: parsed.openId,
+        placementRole: parsed.placementRole,
+        name: parsed.name,
+      };
+    } catch {
+      return null;
+    }
+  }
+
   /**
    * Create a session token for a Manus user openId
    * @example
@@ -268,6 +329,23 @@ class SDKServer {
       if (typeof authHeader === "string" && authHeader.startsWith("Bearer ")) {
         sessionToken = authHeader.slice(7);
       }
+    }
+
+    const demoSession = this.verifyDemoSession(sessionToken);
+    if (demoSession) {
+      const now = new Date();
+      return {
+        id: demoSession.placementRole === "candidate" ? -1001 : -1002,
+        openId: demoSession.openId,
+        name: demoSession.name,
+        email: demoSession.placementRole === "candidate" ? "test+candidate@presentation.local" : "test+recruiter@presentation.local",
+        loginMethod: "demo",
+        role: "user",
+        placementRole: demoSession.placementRole,
+        createdAt: now,
+        updatedAt: now,
+        lastSignedIn: now,
+      } as AuthenticatedUser;
     }
 
     const session = await this.verifySession(sessionToken);

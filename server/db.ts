@@ -40,6 +40,12 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     updated_at: new Date().toISOString(),
   }, { onConflict: "open_id" }).select("id").single();
   const placementIdentity = unwrap(synced) as { id: string };
+  if (placementRole === "candidate" && identity.email) {
+    const candidateProfile = unwrap(await supabase.from("candidate_profiles").select("id").eq("email", identity.email).limit(1).maybeSingle()) as { id: string } | null;
+    if (candidateProfile) {
+      unwrap(await supabase.from("candidate_profiles").update({ placement_user_id: placementIdentity.id }).eq("id", candidateProfile.id));
+    }
+  }
   const existingNotification = unwrap(await supabase.from("notifications").select("id").eq("placement_user_id", placementIdentity.id).limit(1));
   if (!existingNotification?.[0]) {
     unwrap(await supabase.from("notifications").insert({
@@ -94,8 +100,39 @@ export async function ensurePlacementDemoData() {
 }
 
 export async function getCandidateProfileForUser(userId: number) {
-  const profile = unwrap(await supabase.from("candidate_profiles").select("*").eq("student_code", "AARAV-2026").limit(1).maybeSingle()) as CandidateProfile | null;
+  const identity = unwrap(await supabase.from("placement_users").select("id").eq("manus_user_id", userId).limit(1).maybeSingle()) as { id: string } | null;
+  if (!identity) return undefined;
+  const profile = unwrap(await supabase.from("candidate_profiles").select("*").eq("placement_user_id", identity.id).limit(1).maybeSingle()) as CandidateProfile | null;
   return profile ? candidateDto(profile) : undefined;
+}
+
+export async function listSavedDriveIds(userId: number) {
+  const profile = await getCandidateProfileForUser(userId);
+  if (!profile) return [];
+  const rows = unwrap(await supabase.from("candidate_saved_drives").select("placement_drive_id").eq("candidate_profile_id", profile.id).order("created_at", { ascending: false })) as Array<{ placement_drive_id: string }>;
+  return rows.map((row) => row.placement_drive_id);
+}
+
+export async function setSavedDrive(userId: number, driveId: string, saved: boolean) {
+  const profile = await getCandidateProfileForUser(userId);
+  if (!profile) throw new Error("Candidate profile is not linked to the authenticated user.");
+  if (saved) {
+    unwrap(await supabase.from("candidate_saved_drives").upsert({ candidate_profile_id: profile.id, placement_drive_id: driveId }, { onConflict: "candidate_profile_id,placement_drive_id" }));
+  } else {
+    unwrap(await supabase.from("candidate_saved_drives").delete().eq("candidate_profile_id", profile.id).eq("placement_drive_id", driveId));
+  }
+  return { success: true, saved } as const;
+}
+
+export async function applyCandidateToDrive(userId: number, driveId: string) {
+  const profile = await getCandidateProfileForUser(userId);
+  if (!profile) throw new Error("Candidate profile is not linked to the authenticated user.");
+  const existing = unwrap(await supabase.from("applications").select("*").eq("candidate_profile_id", profile.id).eq("placement_drive_id", driveId).limit(1).maybeSingle()) as Application | null;
+  if (existing) return applicationDto(existing);
+  const drive = unwrap(await supabase.from("placement_drives").select("id").eq("id", driveId).eq("published", true).limit(1).maybeSingle()) as { id: string } | null;
+  if (!drive) throw new Error("Published placement drive was not found.");
+  const created = unwrap(await supabase.from("applications").insert({ candidate_profile_id: profile.id, placement_drive_id: driveId, status: "submitted", eligibility_status: "review", match_score: 0, skill_gaps: [] }).select("*").single()) as Application;
+  return applicationDto(created);
 }
 
 export async function getPlacementDriveByTitle(title: string) {

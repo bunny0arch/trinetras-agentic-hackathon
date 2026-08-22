@@ -16,6 +16,11 @@ export const startLogin = () => {
   const oauthPortalUrl = import.meta.env.VITE_OAUTH_PORTAL_URL;
   const appId = import.meta.env.VITE_APP_ID;
   const redirectUri = `${window.location.origin}/api/oauth/callback`;
+  if (!oauthPortalUrl || !appId) {
+    console.error("Placement authentication is not configured. Set VITE_OAUTH_PORTAL_URL and VITE_APP_ID in the deployment environment.");
+    window.dispatchEvent(new CustomEvent("placement-auth-config-error"));
+    return;
+  }
 
   const nonce = crypto.randomUUID();
   document.cookie = `${OAUTH_STATE_COOKIE}=${nonce}; Path=/; Max-Age=600; SameSite=None; Secure`;

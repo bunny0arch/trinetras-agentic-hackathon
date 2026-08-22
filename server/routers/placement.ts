@@ -10,6 +10,9 @@ import {
   listNotificationsForUser,
   updatePlacementApplicationStatus,
   verifyPlacementApplication,
+  listSavedDriveIds,
+  setSavedDrive,
+  applyCandidateToDrive,
 } from "../db";
 import { requirePlacementRole } from "../placementAuth";
 import { protectedProcedure, router } from "../_core/trpc";
@@ -22,14 +25,29 @@ export const placementRouter = router({
   candidate: router({
     dashboard: protectedProcedure.query(async ({ ctx }) => {
       requirePlacementRole(ctx.user, "candidate");
-      const [profile, snapshot, notificationRows] = await Promise.all([
+      const [profile, snapshot, notificationRows, savedDriveIds] = await Promise.all([
         getCandidateProfileForUser(ctx.user.id),
         getPlacementSnapshot(),
         listNotificationsForUser(ctx.user.id),
+        listSavedDriveIds(ctx.user.id),
       ]);
       const profileApplications = snapshot.applications.filter((row) => row.candidateProfileId === profile?.id);
-      return { profile, drives: snapshot.drives.filter((row) => row.published === 1), applications: profileApplications, notifications: notificationRows };
+      const applicationIds = new Set(profileApplications.map((row) => row.id));
+      const profileInterviews = snapshot.interviews.filter((row) => applicationIds.has(row.applicationId));
+      return { profile, drives: snapshot.drives.filter((row) => row.published === 1), applications: profileApplications, interviews: profileInterviews, notifications: notificationRows, savedDriveIds };
     }),
+    saveDrive: protectedProcedure
+      .input(z.object({ driveId: z.string().uuid(), saved: z.boolean() }))
+      .mutation(async ({ ctx, input }) => {
+        requirePlacementRole(ctx.user, "candidate");
+        return setSavedDrive(ctx.user.id, input.driveId, input.saved);
+      }),
+    applyToDrive: protectedProcedure
+      .input(z.object({ driveId: z.string().uuid() }))
+      .mutation(async ({ ctx, input }) => {
+        requirePlacementRole(ctx.user, "candidate");
+        return applyCandidateToDrive(ctx.user.id, input.driveId);
+      }),
   }),
   recruiter: router({
     dashboard: protectedProcedure.query(async ({ ctx }) => {

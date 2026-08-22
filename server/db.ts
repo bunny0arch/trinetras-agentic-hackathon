@@ -84,6 +84,78 @@ type Interview = {
   id: string; application_id: string; panel_id: string | null; room_id: string | null; scheduled_at: string; duration_minutes: number; mode: "video" | "in_person"; status: "pending" | "confirmed" | "completed" | "rescheduled"; outcome: "advance" | "hold" | "reject" | null; created_at: string; updated_at: string;
 };
 
+const presentationDemoProfile: CandidateProfile = {
+  id: "00000000-0000-4000-8000-000000000001",
+  placement_user_id: null,
+  student_code: "DEMO-2026",
+  full_name: "Presentation Candidate",
+  email: "test+candidate@presentation.local",
+  batch: "2026",
+  department: "Computer Science",
+  cgpa: "8.40",
+  backlogs: 0,
+  skills: ["React", "JavaScript", "CSS", "Figma", "SQL"],
+  projects: ["Placement companion"],
+  certifications: ["SQL Fundamentals"],
+  resume_url: null,
+  profile_completion: 84,
+  placement_status: "interviewing",
+  created_at: "2026-08-20T00:00:00.000Z",
+  updated_at: "2026-08-20T00:00:00.000Z",
+};
+
+const presentationDemoDrives: PlacementDrive[] = [
+  {
+    id: "00000000-0000-4000-8000-000000000011",
+    company: "Northstar Labs",
+    title: "Product Design Intern",
+    location: "Bengaluru · Hybrid",
+    package_lpa: "12.00",
+    deadline: "2026-08-24T18:30:00.000Z",
+    min_cgpa: "7.00",
+    max_backlogs: 0,
+    graduation_batch: "2026",
+    allowed_departments: ["Design", "Computer Science", "Information Technology"],
+    required_skills: ["Figma", "User research", "Prototyping"],
+    published: true,
+    created_by_user_id: null,
+    created_at: "2026-08-20T00:00:00.000Z",
+    updated_at: "2026-08-20T00:00:00.000Z",
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000012",
+    company: "Vertex Systems",
+    title: "Frontend Engineer",
+    location: "Remote · India",
+    package_lpa: "16.00",
+    deadline: "2026-08-27T18:30:00.000Z",
+    min_cgpa: "7.50",
+    max_backlogs: 0,
+    graduation_batch: "2026",
+    allowed_departments: ["Computer Science", "Information Technology"],
+    required_skills: ["React", "JavaScript", "CSS"],
+    published: true,
+    created_by_user_id: null,
+    created_at: "2026-08-20T00:00:00.000Z",
+    updated_at: "2026-08-20T00:00:00.000Z",
+  },
+];
+
+const presentationDemoApplications: Application[] = [
+  {
+    id: "00000000-0000-4000-8000-000000000021",
+    candidate_profile_id: presentationDemoProfile.id,
+    placement_drive_id: presentationDemoDrives[1].id,
+    status: "shortlisted",
+    eligibility_status: "eligible",
+    match_score: 92,
+    eligibility_explanation: "Demo data: the profile meets the displayed batch, CGPA, department, backlog, and skill criteria.",
+    skill_gaps: [],
+    created_at: "2026-08-20T00:00:00.000Z",
+    updated_at: "2026-08-20T00:00:00.000Z",
+  },
+];
+
 const candidateDto = (value: CandidateProfile) => ({ id: value.id, placementUserId: value.placement_user_id, studentCode: value.student_code, fullName: value.full_name, email: value.email, batch: value.batch, department: value.department, cgpa: value.cgpa, backlogs: value.backlogs, skills: value.skills, projects: value.projects, certifications: value.certifications, resumeUrl: value.resume_url, profileCompletion: value.profile_completion, placementStatus: value.placement_status, createdAt: new Date(value.created_at), updatedAt: new Date(value.updated_at) });
 const driveDto = (value: PlacementDrive) => ({ id: value.id, company: value.company, title: value.title, location: value.location, packageLpa: value.package_lpa, deadline: new Date(value.deadline), minCgpa: value.min_cgpa, maxBacklogs: value.max_backlogs, graduationBatch: value.graduation_batch, allowedDepartments: value.allowed_departments, requiredSkills: value.required_skills, published: value.published ? 1 : 0, createdByUserId: value.created_by_user_id, createdAt: new Date(value.created_at), updatedAt: new Date(value.updated_at) });
 const applicationDto = (value: Application) => ({ id: value.id, candidateProfileId: value.candidate_profile_id, placementDriveId: value.placement_drive_id, status: value.status, eligibilityStatus: value.eligibility_status, matchScore: value.match_score, eligibilityExplanation: value.eligibility_explanation, skillGaps: value.skill_gaps, createdAt: new Date(value.created_at), updatedAt: new Date(value.updated_at) });
@@ -102,7 +174,7 @@ export async function ensurePlacementDemoData() {
 export async function getCandidateProfileForUser(userId: number) {
   if (userId === -1001) {
     const demoProfile = unwrap(await supabase.from("candidate_profiles").select("*").eq("student_code", "DEMO-2026").limit(1).maybeSingle()) as CandidateProfile | null;
-    return demoProfile ? candidateDto(demoProfile) : undefined;
+    return candidateDto(demoProfile ?? presentationDemoProfile);
   }
   const identity = unwrap(await supabase.from("placement_users").select("id").eq("manus_user_id", userId).limit(1).maybeSingle()) as { id: string } | null;
   if (!identity) return undefined;
@@ -172,22 +244,31 @@ export async function applyCandidateToDrive(userId: number, driveId: string) {
 
 export async function getPlacementDriveByTitle(title: string) {
   const drive = unwrap(await supabase.from("placement_drives").select("*").eq("title", title).limit(1).maybeSingle()) as PlacementDrive | null;
-  return drive ? driveDto(drive) : undefined;
+  if (drive) return driveDto(drive);
+  const demoDrive = presentationDemoDrives.find((row) => row.title === title);
+  return demoDrive ? driveDto(demoDrive) : undefined;
 }
 
-export async function getPlacementSnapshot() {
+export async function getPlacementSnapshot(useDemoFallback = false) {
   const [candidateResult, driveResult, applicationResult, interviewResult] = await Promise.all([
     supabase.from("candidate_profiles").select("*").order("updated_at", { ascending: false }),
     supabase.from("placement_drives").select("*").order("deadline", { ascending: false }),
     supabase.from("applications").select("*").order("updated_at", { ascending: false }),
     supabase.from("interviews").select("*").order("scheduled_at", { ascending: false }),
   ]);
-  return {
-    candidates: (unwrap(candidateResult) as CandidateProfile[]).map(candidateDto),
-    drives: (unwrap(driveResult) as PlacementDrive[]).map(driveDto),
-    applications: (unwrap(applicationResult) as Application[]).map(applicationDto),
-    interviews: (unwrap(interviewResult) as Interview[]).map(interviewDto),
-  };
+  const candidates = (unwrap(candidateResult) as CandidateProfile[]).map(candidateDto);
+  const drives = (unwrap(driveResult) as PlacementDrive[]).map(driveDto);
+  const applications = (unwrap(applicationResult) as Application[]).map(applicationDto);
+  const interviews = (unwrap(interviewResult) as Interview[]).map(interviewDto);
+  if (useDemoFallback) {
+    return {
+      candidates: candidates.length ? candidates : [candidateDto(presentationDemoProfile)],
+      drives: drives.length ? drives : presentationDemoDrives.map(driveDto),
+      applications: applications.length ? applications : presentationDemoApplications.map(applicationDto),
+      interviews,
+    };
+  }
+  return { candidates, drives, applications, interviews };
 }
 
 export async function listNotificationsForUser(userId: number) {

@@ -14,7 +14,7 @@ import {
   setSavedDrive,
   applyCandidateToDrive,
 } from "../db";
-import { requireLivePlacementMutation, requirePlacementRole } from "../placementAuth";
+import { isPresentationDemoUser, requireLivePlacementMutation, requirePlacementRole } from "../placementAuth";
 import { protectedProcedure, router } from "../_core/trpc";
 
 export const placementRouter = router({
@@ -27,7 +27,7 @@ export const placementRouter = router({
       requirePlacementRole(ctx.user, "candidate");
       const [profile, snapshot, notificationRows, savedDriveIds] = await Promise.all([
         getCandidateProfileForUser(ctx.user.id),
-        getPlacementSnapshot(),
+        getPlacementSnapshot(isPresentationDemoUser(ctx.user)),
         listNotificationsForUser(ctx.user.id),
         listSavedDriveIds(ctx.user.id),
       ]);
@@ -54,7 +54,7 @@ export const placementRouter = router({
   recruiter: router({
     dashboard: protectedProcedure.query(async ({ ctx }) => {
       requirePlacementRole(ctx.user, "recruiter");
-      const snapshot = await getPlacementSnapshot();
+      const snapshot = await getPlacementSnapshot(isPresentationDemoUser(ctx.user));
       const activeDrives = snapshot.drives.filter((row) => row.published === 1);
       const shortlisted = snapshot.applications.filter((row) => row.status === "shortlisted");
       const scheduled = snapshot.interviews.filter((row) => row.status === "confirmed" || row.status === "pending");

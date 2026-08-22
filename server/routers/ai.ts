@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { getCandidateProfileForUser, getPlacementDriveByTitle, getPlacementSnapshot } from "../db";
 import { invokePlacementModel } from "../openrouter";
-import { requirePlacementRole } from "../placementAuth";
+import { isPresentationDemoUser, requirePlacementRole } from "../placementAuth";
 import { protectedProcedure, router } from "../_core/trpc";
 
 const eligibilitySchema = {
@@ -122,7 +122,7 @@ export const aiRouter = router({
     .input(z.object({ question: z.string().min(1).max(1200) }))
     .query(async ({ ctx, input }) => {
       requirePlacementRole(ctx.user, "candidate");
-      const [candidate, snapshot] = await Promise.all([getCandidateProfileForUser(ctx.user.id), getPlacementSnapshot()]);
+      const [candidate, snapshot] = await Promise.all([getCandidateProfileForUser(ctx.user.id), getPlacementSnapshot(isPresentationDemoUser(ctx.user))]);
       const response = await invokePlacementModel({
         messages: [
           {
@@ -141,7 +141,7 @@ export const aiRouter = router({
     .input(z.object({ question: z.string().min(1).max(1200) }))
     .query(async ({ ctx, input }) => {
       requirePlacementRole(ctx.user, "recruiter");
-      const snapshot = await getPlacementSnapshot();
+      const snapshot = await getPlacementSnapshot(isPresentationDemoUser(ctx.user));
       const response = await invokePlacementModel({
         messages: [
           {

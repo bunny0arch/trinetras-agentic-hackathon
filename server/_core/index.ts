@@ -28,15 +28,21 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
   throw new Error(`No available port found starting from ${startPort}`);
 }
 
-async function startServer() {
+/**
+ * Build the shared Express application used by both local development and Vercel.
+ * The app is intentionally created without a port listener so Vercel can import it
+ * as a serverless function.
+ */
+export function createApp() {
   const app = express();
-  const server = createServer(app);
-  // Configure body parser with larger size limit for file uploads
+
+  // Configure body parser with larger size limit for file uploads.
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   registerStorageProxy(app);
   registerOAuthRoutes(app);
-  // tRPC API
+
+  // tRPC API.
   app.use(
     "/api/trpc",
     createExpressMiddleware({
@@ -44,7 +50,15 @@ async function startServer() {
       createContext,
     })
   );
-  // development mode uses Vite, production mode uses static files
+
+  return app;
+}
+
+async function startServer() {
+  const app = createApp();
+  const server = createServer(app);
+
+  // Development mode uses Vite; production mode serves the built frontend.
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
   } else {
@@ -63,4 +77,8 @@ async function startServer() {
   });
 }
 
-startServer().catch(console.error);
+// Vercel imports the app from the root entrypoint and owns the request lifecycle.
+// Keep the listener for the existing local `pnpm start` workflow only.
+if (!process.env.VERCEL) {
+  startServer().catch(console.error);
+}

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 import CandidateHome from './CandidateHome.jsx'
 import RecruiterHome from './RecruiterHome.jsx'
+import { AuthProvider, useAuth } from './lib/AuthContext.jsx'
 
 const roles = {
   candidate: {
@@ -33,6 +34,7 @@ const metrics = [
 ]
 
 function LoginPage() {
+  const { signIn, signUp } = useAuth()
   const shellRef = useRef(null)
   const rippleTimersRef = useRef(new Set())
   const supportNoticeTimerRef = useRef(null)
@@ -52,8 +54,7 @@ function LoginPage() {
     role: 'Candidate',
   })
   const [ripples, setRipples] = useState([])
-  const [isCandidateHomeVisible, setIsCandidateHomeVisible] = useState(false)
-  const [isRecruiterHomeVisible, setIsRecruiterHomeVisible] = useState(false)
+  const [loginError, setLoginError] = useState(null)
 
   const activeRole = useMemo(
     () => (selectedRole ? roles[selectedRole] : null),
@@ -96,27 +97,50 @@ function LoginPage() {
     }
   }, [])
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault()
     if (!selectedRole) return
-    if (selectedRole === 'candidate') {
-      setIsCandidateHomeVisible(true)
-      return
+    setLoginError(null)
+    try {
+      await signIn(form.email, form.password)
+    } catch (err) {
+      console.error('Login error:', err)
+      setLoginError(err.message || 'Invalid login credentials')
     }
-    if (selectedRole === 'recruiter') {
-      setIsRecruiterHomeVisible(true)
-      return
-    }
-    console.log(`Login as ${selectedRole} with`, form)
   }
 
-  const handleCreateAccount = (event) => {
+  const handleCreateAccount = async (event) => {
     event.preventDefault()
-    setAccountCreated(true)
-    console.log('Create account for', signUpForm)
+    setLoginError(null)
+    try {
+      await signUp(signUpForm.email, signUpForm.password, {
+        name: signUpForm.name,
+        college: signUpForm.college,
+        role: signUpForm.role.toLowerCase()
+      })
+      setAccountCreated(true)
+    } catch (err) {
+      console.error('Signup error:', err)
+      setLoginError(err.message || 'Failed to create account')
+    }
+  }
+
+  const resetCreateAccount = () => {
+    setShowCreateAccount(false)
+    setAccountCreated(false)
+    setShowSignupPassword(false)
+    setLoginError(null)
+    setSignUpForm({
+      name: '',
+      email: '',
+      password: '',
+      college: '',
+      role: selectedRole === 'recruiter' ? 'Recruiter' : 'Candidate',
+    })
   }
 
   const openCreateAccount = () => {
+    setLoginError(null)
     setSignUpForm((current) => ({
       ...current,
       role: selectedRole === 'recruiter' ? 'Recruiter' : 'Candidate',
@@ -142,27 +166,6 @@ function LoginPage() {
       window.clearTimeout(supportNoticeTimerRef.current)
     }
   }, [])
-
-  if (isCandidateHomeVisible) {
-    return <CandidateHome onLogout={() => setIsCandidateHomeVisible(false)} />
-  }
-
-  if (isRecruiterHomeVisible) {
-    return <RecruiterHome onLogout={() => setIsRecruiterHomeVisible(false)} />
-  }
-
-  const resetCreateAccount = () => {
-    setShowCreateAccount(false)
-    setAccountCreated(false)
-    setShowSignupPassword(false)
-    setSignUpForm({
-      name: '',
-      email: '',
-      password: '',
-      college: '',
-      role: selectedRole === 'recruiter' ? 'Recruiter' : 'Candidate',
-    })
-  }
 
   return (
     <div className="placement-shell" ref={shellRef}>
@@ -250,6 +253,7 @@ function LoginPage() {
               </div>
 
               <form className="login-form" onSubmit={handleSubmit}>
+                {loginError && <div className="error-message" style={{ color: '#ff4d4f', marginBottom: '1rem', fontSize: '0.9rem' }}>{loginError}</div>}
                 <label>
                   <span>Email</span>
                   <input
@@ -329,6 +333,7 @@ function LoginPage() {
                   </div>
 
                   <form className="signup-form" onSubmit={handleCreateAccount}>
+                    {loginError && <div className="error-message" style={{ color: '#ff4d4f', marginBottom: '1rem', fontSize: '0.9rem' }}>{loginError}</div>}
                     <label>
                       <span>Full name</span>
                       <input
@@ -459,5 +464,31 @@ function LoginPage() {
   )
 }
 
+function MainApp() {
+  const { isAuthenticated, role, loading, signOut } = useAuth()
+
+  if (loading) {
+    return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: 'white' }}>Loading...</div>
+  }
+
+  if (isAuthenticated && role === 'candidate') {
+    return <CandidateHome onLogout={signOut} />
+  }
+
+  if (isAuthenticated && role === 'recruiter') {
+    return <RecruiterHome onLogout={signOut} />
+  }
+
+  return <LoginPage />
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <MainApp />
+    </AuthProvider>
+  )
+}
+
 export { LoginPage }
-export default LoginPage
+export default App

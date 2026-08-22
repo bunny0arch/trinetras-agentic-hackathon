@@ -1,6 +1,22 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import './RecruiterHome.css'
-import { askPlacementManager, optimizeInterviewSchedule, rankCandidates } from './services/recruiterAi.js'
+import { useAuth } from './lib/AuthContext'
+import { 
+  getRecruiterStats, 
+  getDrives, 
+  getStudents, 
+  getApplications, 
+  getInterviews, 
+  getTests,
+  createDrive,
+  updateApplication
+} from './lib/database'
+import { 
+  askPlacementManager, 
+  optimizeInterviewSchedule, 
+  rankCandidates, 
+  extractDriveRequirements 
+} from './services/recruiterAi'
 
 const navItems = [
   ['overview', 'Overview', '◈'],
@@ -13,60 +29,481 @@ const navItems = [
   ['settings', 'Profile & settings', '⚙'],
 ]
 
-const students = [
-  { name: 'Aarav Rao', branch: 'Computer Science', cgpa: '9.1', status: 'Shortlisted', score: 96 },
-  { name: 'Meera Iyer', branch: 'Information Science', cgpa: '8.8', status: 'Eligible', score: 91 },
-  { name: 'Rohan Shah', branch: 'Computer Science', cgpa: '8.4', status: 'Test pending', score: 84 },
-  { name: 'Ananya Das', branch: 'Electronics', cgpa: '8.9', status: 'Review needed', score: 72 },
-]
-
 function RecruiterHome({ onLogout }) {
+  const { user, profile, signOut } = useAuth()
   const [activeView, setActiveView] = useState('overview')
   const [assistantOpen, setAssistantOpen] = useState(false)
   const [assistantQuestion, setAssistantQuestion] = useState('')
   const [assistantResponse, setAssistantResponse] = useState('')
   const [assistantLoading, setAssistantLoading] = useState(false)
   const [driveModalOpen, setDriveModalOpen] = useState(false)
-  const [rankedStudents, setRankedStudents] = useState(students)
+  
+  // State for data
+  const [stats, setStats] = useState(null)
+  const [drives, setDrives] = useState([])
+  const [students, setStudents] = useState([])
+  const [applications, setApplications] = useState([])
+  const [interviews, setInterviews] = useState([])
+  const [tests, setTests] = useState([])
+  const [rankedStudents, setRankedStudents] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  const [newDrive, setNewDrive] = useState({
+    title: '',
+    company_name: '',
+    job_description: '',
+    min_cgpa: 7.0,
+    branches: [],
+    skills: [],
+    application_deadline: ''
+  })
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true)
+        // Use profile?.id if available, otherwise use 'demo' for demo mode
+        const recruiterId = profile?.id || 'demo-recruiter'
+        const [statsData, drivesData, studentsData, applicationsData, interviewsData, testsData] = await Promise.all([
+          getRecruiterStats(recruiterId),
+          getDrives(),
+          getStudents(),
+          getApplications(),
+          getInterviews(),
+          getTests()
+        ])
+        setStats(statsData || { active_drives: 0, total_students: 0, applications_received: 0, interviews_scheduled: 0 })
+        setDrives(drivesData || [])
+        setStudents(studentsData || [])
+        setApplications(applicationsData || [])
+        setInterviews(interviewsData || [])
+        setTests(testsData || [])
+      } catch (error) {
+        console.error('Error loading data:', error)
+        // Set default empty state so UI still renders
+        setStats({ active_drives: 0, total_students: 0, applications_received: 0, interviews_scheduled: 0 })
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadData()
+  }, [profile])
+
+  const handleLogout = async () => {
+    await signOut()
+    onLogout?.()
+  }
 
   const askManager = async (question) => {
     const prompt = question || assistantQuestion
     if (!prompt.trim()) return
-    setAssistantQuestion(prompt)
     setAssistantLoading(true)
-    const response = await askPlacementManager(prompt)
-    setAssistantResponse(response.answer)
-    setAssistantLoading(false)
+    try {
+      const response = await askPlacementManager(prompt)
+      setAssistantResponse(response.answer)
+      setAssistantQuestion('')
+    } catch (error) {
+      setAssistantResponse('Unable to get response. Please try again.')
+    } finally {
+      setAssistantLoading(false)
+    }
   }
 
   const runRanking = async () => {
-    const result = await rankCandidates(students, { eligibility: { cgpa: 7.5 } })
-    setRankedStudents(result)
-    setActiveView('students')
+    try {
+      const selectedDrive = drives[0]
+      if (!selectedDrive) return
+      const result = await rankCandidates(students, selectedDrive)
+      setRankedStudents(result)
+      setActiveView('students')
+    } catch (error) {
+      console.error('Ranking failed:', error)
+    }
+  }
+
+  const handleCreateDrive = async () => {
+    try {
+      const requirements = await extractDriveRequirements(newDrive)
+      const driveData = {
+        ...newDrive,
+        recruiter_id: profile.id,
+        status: 'active',
+        skills: requirements.skills,
+        eligibility_criteria: requirements.eligibility
+      }
+      await createDrive(driveData)
+      setDriveModalOpen(false)
+      setNewDrive({ title: '', company_name: '', job_description: '', min_cgpa: 7.0, branches: [], skills: [], application_deadline: '' })
+      const updatedDrives = await getDrives()
+      setDrives(updatedDrives)
+    } catch (error) {
+      console.error('Error creating drive:', error)
+    }
+  }
+
+  const handleShortlist = async (applicationId) => {
+    try {
+      await updateApplication(applicationId, { status: 'shortlisted' })
+      const updatedApplications = await getApplications()
+      setApplications(updatedApplications)
+    } catch (error) {
+      console.error('Error updating application:', error)
+    }
   }
 
   const renderOverview = () => (
     <>
-      <section className="recruiter-hero"><div><span className="recruiter-eyebrow">Tuesday, 21 August 2026 · Placement cell</span><h1>Turn placement data into momentum.</h1><p>One operating view for every drive, student, and decision.</p></div><button type="button" className="recruiter-primary" onClick={() => setDriveModalOpen(true)}>Create placement drive <span>+</span></button></section>
-      <section className="recruiter-stats" aria-label="Recruiter summary"><div><span>Registered students</span><strong>1,248</strong><small>+84 this month</small></div><div><span>Eligible students</span><strong>864</strong><small>69% of cohort</small></div><div><span>Active drives</span><strong>18</strong><small>4 close this week</small></div><div><span>Applications received</span><strong>3,492</strong><small>+12% this week</small></div><div><span>Shortlisted</span><strong>486</strong><small>Across 18 drives</small></div><div><span>Students placed</span><strong>172</strong><small>14% placement rate</small></div></section>
-      <div className="recruiter-columns"><section className="recruiter-panel"><div className="panel-title"><div><span className="recruiter-eyebrow">AI placement insight</span><h2>Where attention is needed</h2></div><button type="button" className="text-action" onClick={() => setAssistantOpen(true)}>Ask placement AI →</button></div><div className="insight-callout"><span className="insight-mark">✦</span><div><h3>Interview capacity is the current bottleneck.</h3><p>Two panels overlap tomorrow between 3:00 and 4:00 PM. Rebalancing rooms now could keep 18 candidates on schedule.</p><button type="button" className="text-action" onClick={() => setActiveView('interviews')}>Review conflicts →</button></div></div></section><aside className="recruiter-panel pending-panel"><div className="panel-title"><div><span className="recruiter-eyebrow">Action queue</span><h2>Needs attention</h2></div><span className="action-count">7</span></div><ul><li><b>3</b> incomplete student profiles</li><li><b>2</b> interview evaluations pending</li><li><b>2</b> application deadlines expiring</li></ul><button type="button" className="text-action" onClick={() => setActiveView('applications')}>Open action queue →</button></aside></div>
-      <section className="recruiter-panel drive-preview"><div className="panel-title"><div><span className="recruiter-eyebrow">Live operations</span><h2>Active placement drives</h2></div><button type="button" className="text-action" onClick={() => setActiveView('drives')}>View all 18 →</button></div><div className="drive-list"><div className="drive-row"><span className="drive-logo coral">N</span><div><strong>Northstar Labs · Product Design Intern</strong><small>142 applications · Closes in 3 days</small></div><span className="drive-status live">Live</span><span className="drive-progress">72%</span></div><div className="drive-row"><span className="drive-logo lime">V</span><div><strong>Vertex Systems · Frontend Engineer</strong><small>218 applications · Closes in 6 days</small></div><span className="drive-status live">Live</span><span className="drive-progress">54%</span></div><div className="drive-row"><span className="drive-logo amber">M</span><div><strong>Mosaic Finance · Data Analyst</strong><small>98 applications · Closes in 9 days</small></div><span className="drive-status draft">Draft</span><span className="drive-progress">--</span></div></div></section>
+      <section className="recruiter-hero">
+        <div>
+          <span className="recruiter-eyebrow">Campus Placement Portal</span>
+          <h1>Turn placement data into momentum.</h1>
+          <p>One operating view for every drive, student, and decision.</p>
+        </div>
+        <button type="button" className="recruiter-primary" onClick={() => setDriveModalOpen(true)}>
+          Create placement drive <span>+</span>
+        </button>
+      </section>
+
+      {stats && (
+        <section className="recruiter-view">
+          <div className="recruiter-view-heading">
+            <div>
+              <span className="recruiter-eyebrow">Placement overview</span>
+              <h1>Here's where we stand.</h1>
+              <p>Real-time metrics on drives, students, and pipeline movement.</p>
+            </div>
+          </div>
+          <div className="analytics-grid">
+            <div>
+              <span>Total registered students</span>
+              <strong>{stats.totalStudents}</strong>
+              <small>Across all batches</small>
+            </div>
+            <div>
+              <span>Active placement drives</span>
+              <strong>{stats.activeDrives}</strong>
+              <small>Currently recruiting</small>
+            </div>
+            <div>
+              <span>Applications received</span>
+              <strong>{stats.totalApplications}</strong>
+              <small>In pipeline</small>
+            </div>
+            <div>
+              <span>Students placed</span>
+              <strong>{stats.totalPlacements}</strong>
+              <small>Offers received</small>
+            </div>
+            <div>
+              <span>Interviews scheduled</span>
+              <strong>{stats.scheduledInterviews}</strong>
+              <small>This week</small>
+            </div>
+            <div>
+              <span>Tests scheduled</span>
+              <strong>{stats.scheduledTests}</strong>
+              <small>Pending</small>
+            </div>
+          </div>
+        </section>
+      )}
+
+      <section className="recruiter-view">
+        <div className="recruiter-view-heading">
+          <div>
+            <span className="recruiter-eyebrow">Pending actions</span>
+            <h1>Keep the pipeline moving.</h1>
+            <p>Address blockers to accelerate placements.</p>
+          </div>
+        </div>
+        <div className="actions-list">
+          <div className="action-item">
+            <span>📋 Review pending applications</span>
+            <small>{applications.filter(a => a.status === 'pending').length} awaiting decision</small>
+          </div>
+          <div className="action-item">
+            <span>✅ Finalize interview panel assignments</span>
+            <small>{interviews.filter(i => !i.panel_id).length} interviews without panels</small>
+          </div>
+          <div className="action-item">
+            <span>⚡ Resolve scheduling conflicts</span>
+            <small>2 overlapping interviews detected</small>
+          </div>
+        </div>
+      </section>
     </>
   )
 
-  const renderDrives = () => <section className="recruiter-view"><div className="recruiter-view-heading"><div><span className="recruiter-eyebrow">Drive management</span><h1>Placement opportunities.</h1><p>Create, extract, configure, publish, and monitor every opportunity.</p></div><button type="button" className="recruiter-primary" onClick={() => setDriveModalOpen(true)}>New drive <span>+</span></button></div><div className="drive-list expanded"><div className="drive-row"><span className="drive-logo coral">N</span><div><strong>Northstar Labs · Product Design Intern</strong><small>Eligibility: 7.5 CGPA · CS, IS · 2026 · 142 applications</small></div><span className="drive-status live">Published</span><button type="button" className="row-action">Manage →</button></div><div className="drive-row"><span className="drive-logo lime">V</span><div><strong>Vertex Systems · Frontend Engineer</strong><small>Eligibility: 8.0 CGPA · CS, IS, ECE · 2026 · 218 applications</small></div><span className="drive-status live">Published</span><button type="button" className="row-action">Manage →</button></div><div className="drive-row"><span className="drive-logo amber">M</span><div><strong>Mosaic Finance · Data Analyst</strong><small>Requirements extracted by AI · Review before publishing</small></div><span className="drive-status draft">Draft</span><button type="button" className="row-action">Edit →</button></div></div></section>
+  const renderDrives = () => (
+    <section className="recruiter-view">
+      <div className="recruiter-view-heading">
+        <div>
+          <span className="recruiter-eyebrow">Placement drives</span>
+          <h1>Manage job opportunities.</h1>
+          <p>Create, configure, and track placement drives.</p>
+        </div>
+        <button type="button" className="text-action" onClick={() => setDriveModalOpen(true)}>
+          New drive →
+        </button>
+      </div>
+      <div className="drives-list">
+        {drives.map(drive => (
+          <div key={drive.id} className="drive-card">
+            <div>
+              <h3>{drive.company_name}</h3>
+              <p>{drive.title}</p>
+              <small>Deadline: {new Date(drive.application_deadline).toLocaleDateString()}</small>
+            </div>
+            <span className="drive-status">{drive.status}</span>
+          </div>
+        ))}
+        {drives.length === 0 && <p>No active drives. Create one to get started.</p>}
+      </div>
+    </section>
+  )
 
-  const renderStudents = () => <section className="recruiter-view"><div className="recruiter-view-heading"><div><span className="recruiter-eyebrow">Student management</span><h1>Find the right student faster.</h1><p>Eligibility, readiness, skills, and placement status in one searchable view.</p></div><button type="button" className="ai-action" onClick={runRanking}>AI rank candidates ✦</button></div><div className="student-toolbar"><input placeholder="Search by name, branch, or skill" /><button type="button">Branch ▾</button><button type="button">Eligibility ▾</button><button type="button">Placement status ▾</button></div><div className="student-table"><div className="student-head"><span>Student</span><span>Academic</span><span>AI match</span><span>Status</span><span>Action</span></div>{rankedStudents.map((student) => <div className="student-row" key={student.name}><div><strong>{student.name}</strong><small>{student.branch}</small></div><span>CGPA {student.cgpa}</span><b className="student-score">{student.score}%</b><span className="student-status">{student.status}</span><button type="button" className="row-action">View profile →</button></div>)}</div></section>
+  const renderStudents = () => (
+    <section className="recruiter-view">
+      <div className="recruiter-view-heading">
+        <div>
+          <span className="recruiter-eyebrow">Student management</span>
+          <h1>Find and rank candidates.</h1>
+          <p>AI-powered matching and scoring system.</p>
+        </div>
+        <button type="button" className="text-action" onClick={runRanking}>
+          Rank all candidates ✦
+        </button>
+      </div>
+      <div className="students-table">
+        <div className="table-header">
+          <span>Name</span>
+          <span>Branch</span>
+          <span>CGPA</span>
+          <span>Match Score</span>
+          <span>Status</span>
+        </div>
+        {(rankedStudents.length > 0 ? rankedStudents : students).map((student, i) => (
+          <div key={i} className="table-row">
+            <span>{student.name}</span>
+            <span>{student.branch}</span>
+            <span>{student.cgpa}</span>
+            <span><strong>{student.matchScore || student.score}</strong></span>
+            <span>{student.status || 'Eligible'}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
 
-  const renderApplications = () => <section className="recruiter-view"><div className="recruiter-view-heading"><div><span className="recruiter-eyebrow">Application management</span><h1>Move candidates forward.</h1><p>Shortlist, reject, filter, and export applications by drive.</p></div><button type="button" className="ai-action" onClick={runRanking}>Generate shortlist ✦</button></div><div className="application-summary"><div><strong>3,492</strong><span>Total applications</span></div><div><strong>486</strong><span>Shortlisted</span></div><div><strong>128</strong><span>Pending review</span></div><div><strong>74%</strong><span>Reviewed</span></div></div><div className="candidate-queue"><div><strong>Product Design Intern</strong><span>Northstar Labs · 142 applicants</span><button type="button" className="row-action">Open applications →</button></div><div><strong>Frontend Engineer</strong><span>Vertex Systems · 218 applicants</span><button type="button" className="row-action">Open applications →</button></div></div></section>
+  const renderApplications = () => (
+    <section className="recruiter-view">
+      <div className="recruiter-view-heading">
+        <div>
+          <span className="recruiter-eyebrow">Application tracking</span>
+          <h1>Manage submissions and decisions.</h1>
+          <p>Shortlist, reject, or advance candidates.</p>
+        </div>
+      </div>
+      <div className="applications-list">
+        {applications.map(app => (
+          <div key={app.id} className="app-card">
+            <div>
+              <h3>{app.student_id}</h3>
+              <p>Applied to drive #{app.drive_id}</p>
+              <small>Status: {app.status}</small>
+            </div>
+            <div className="app-actions">
+              {app.status === 'pending' && (
+                <>
+                  <button onClick={() => handleShortlist(app.id)}>Shortlist</button>
+                  <button onClick={() => updateApplication(app.id, { status: 'rejected' })}>Reject</button>
+                </>
+              )}
+            </div>
+          </div>
+        ))}
+        {applications.length === 0 && <p>No applications yet.</p>}
+      </div>
+    </section>
+  )
 
-  const renderInterviews = () => <section className="recruiter-view"><div className="recruiter-view-heading"><div><span className="recruiter-eyebrow">Panel & room coordination</span><h1>Keep every conversation on track.</h1><p>Interviews, rooms, panels, conflicts, and alternatives in one operating view.</p></div><button type="button" className="ai-action" onClick={async () => { await optimizeInterviewSchedule([]); setAssistantOpen(true) }}>Optimize schedule ✦</button></div><div className="conflict-banner"><span>!</span><div><strong>2 scheduling conflicts detected</strong><p>Panel 03 and Room B overlap tomorrow from 3:00 to 4:00 PM.</p></div><button type="button" className="text-action" onClick={() => setAssistantOpen(true)}>Resolve with AI →</button></div><div className="interview-list"><div><time>10:30</time><span className="panel-dot coral" /><section><strong>Product Design Intern · Round 1</strong><small>Panel 01 · Room A · Priya Menon, Design Lead</small></section><b className="confirmed">Confirmed</b></div><div><time>15:00</time><span className="panel-dot amber" /><section><strong>Frontend Engineer · Technical round</strong><small>Panel 03 · Room B · Conflict detected</small></section><b className="conflict">Conflict</b></div><div><time>16:30</time><span className="panel-dot lime" /><section><strong>Data Analyst · Hiring manager round</strong><small>Panel 02 · Room C · Raj Malhotra</small></section><b className="confirmed">Confirmed</b></div></div></section>
+  const renderAnalytics = () => (
+    <section className="recruiter-view">
+      <div className="recruiter-view-heading">
+        <div>
+          <span className="recruiter-eyebrow">Placement analytics</span>
+          <h1>See the placement picture.</h1>
+          <p>Track conversion, packages, readiness, and bottlenecks across the cohort.</p>
+        </div>
+      </div>
+      <div className="analytics-grid">
+        <div>
+          <span>Overall placement rate</span>
+          <strong>{stats ? ((stats.totalPlacements / stats.totalStudents) * 100).toFixed(1) : 0}%</strong>
+          <small>Current cycle</small>
+        </div>
+        <div>
+          <span>Average package</span>
+          <strong>₹12.5L</strong>
+          <small>Across placed students</small>
+        </div>
+        <div>
+          <span>Interview conversion</span>
+          <strong>45%</strong>
+          <small>Shortlisted to offers</small>
+        </div>
+        <div>
+          <span>Unplaced students</span>
+          <strong>{stats ? stats.totalStudents - stats.totalPlacements : 0}</strong>
+          <small>Need readiness support</small>
+        </div>
+      </div>
+    </section>
+  )
 
-  const renderAnalytics = () => <section className="recruiter-view"><div className="recruiter-view-heading"><div><span className="recruiter-eyebrow">Placement analytics</span><h1>See the placement picture.</h1><p>Track conversion, packages, readiness, and bottlenecks across the cohort.</p></div><button type="button" className="text-action">Export report ↓</button></div><div className="analytics-grid"><div><span>Overall placement rate</span><strong>14%</strong><small>+3.2% from last cycle</small></div><div><span>Average package</span><strong>₹11.8L</strong><small>Across 172 placed students</small></div><div><span>Interview conversion</span><strong>38%</strong><small>486 shortlisted · 184 offers</small></div><div><span>Unplaced students</span><strong>692</strong><small>119 need readiness support</small></div></div><div className="analytics-visual"><span className="recruiter-eyebrow">Branch-wise readiness</span><h2>Where support can move the number</h2><div className="bar-chart"><div><span>Computer Science</span><i><em style={{ width: '86%' }} /></i><b>86%</b></div><div><span>Information Science</span><i><em style={{ width: '74%' }} /></i><b>74%</b></div><div><span>Electronics</span><i><em style={{ width: '58%' }} /></i><b>58%</b></div><div><span>Mechanical</span><i><em style={{ width: '43%' }} /></i><b>43%</b></div></div></div></section>
+  const renderSettings = () => (
+    <section className="recruiter-view">
+      <div className="recruiter-view-heading">
+        <div>
+          <span className="recruiter-eyebrow">Profile & settings</span>
+          <h1>Manage your account.</h1>
+          <p>Organization, preferences, and system configuration.</p>
+        </div>
+      </div>
+      <div className="settings-grid">
+        <div>
+          <span className="recruiter-eyebrow">Profile</span>
+          <h2>{profile?.name || 'Recruiter'}</h2>
+          <p>{profile?.organization || 'Placement Cell'}</p>
+          <button type="button" className="row-action">Edit profile →</button>
+        </div>
+        <div>
+          <span className="recruiter-eyebrow">Notification preferences</span>
+          <h2>Alerts enabled</h2>
+          <p>Drive, test, interview, and placement alerts active.</p>
+          <button type="button" className="row-action">Manage →</button>
+        </div>
+        <div>
+          <span className="recruiter-eyebrow">Sign out</span>
+          <h2>End session</h2>
+          <p>Securely log out from all devices.</p>
+          <button type="button" className="row-action" onClick={handleLogout}>Sign out →</button>
+        </div>
+      </div>
+    </section>
+  )
 
-  const renderSettings = () => <section className="recruiter-view"><div className="recruiter-view-heading"><div><span className="recruiter-eyebrow">Recruiter profile & settings</span><h1>Set your operating context.</h1><p>Organization, permissions, notifications, and audit history.</p></div></div><div className="settings-grid"><div><span className="recruiter-eyebrow">Profile</span><h2>Trinetra Placement Cell</h2><p>Recruiter admin · Bengaluru campus</p><button type="button" className="row-action">Edit profile →</button></div><div><span className="recruiter-eyebrow">Notification preferences</span><h2>Delivery is active</h2><p>Drive, test, interview, and exception alerts are enabled.</p><button type="button" className="row-action">Manage preferences →</button></div><div><span className="recruiter-eyebrow">Activity history</span><h2>Audit trail ready</h2><p>Track changes to drives, eligibility, rankings, and schedules.</p><button type="button" className="row-action">Open activity →</button></div></div></section>
+  if (loading) {
+    return <div className="recruiter-home"><p>Loading...</p></div>
+  }
 
-  return <div className="recruiter-home"><aside className="recruiter-sidebar"><a className="recruiter-brand" href="/" aria-label="Campus placement home"><span className="recruiter-symbol">CP</span><span>Campus placement</span></a><div className="recruiter-identity"><span className="recruiter-avatar">TV</span><div><strong>Trinetra Vardhan</strong><small>Recruiter admin</small></div></div><nav className="recruiter-nav" aria-label="Recruiter navigation">{navItems.map(([id, label, icon]) => <button key={id} type="button" className={activeView === id ? 'active' : ''} onClick={() => setActiveView(id)}><span>{icon}</span>{label}</button>)}</nav><button type="button" className="manager-rail" onClick={() => setAssistantOpen(true)}><span>✦</span><div><strong>Placement manager</strong><small>Ask about your data</small></div></button><button type="button" className="recruiter-signout" onClick={onLogout}>↪ <span>Sign out</span></button></aside><main className="recruiter-content"><header className="recruiter-header"><span className="mobile-recruiter-label">Recruiter workspace</span><button type="button" className="recruiter-alert" aria-label="Alerts">♧<b>5</b></button></header><div className="recruiter-page">{activeView === 'overview' && renderOverview()}{activeView === 'drives' && renderDrives()}{activeView === 'students' && renderStudents()}{activeView === 'applications' && renderApplications()}{activeView === 'assessments' && renderApplications()}{activeView === 'interviews' && renderInterviews()}{activeView === 'analytics' && renderAnalytics()}{activeView === 'settings' && renderSettings()}</div></main>{assistantOpen && <div className="recruiter-overlay" onClick={() => setAssistantOpen(false)}><section className="manager-panel" onClick={(event) => event.stopPropagation()}><div className="manager-head"><div><span className="recruiter-eyebrow">AI placement manager</span><h2>What should we inspect?</h2></div><button type="button" className="close-manager" onClick={() => setAssistantOpen(false)}>×</button></div><p>Ask for eligible candidates, bottlenecks, conflicts, reports, or recommended actions.</p><div className="manager-prompts"><button type="button" onClick={() => askManager('Find the best candidates for Product Design')}>Find the best candidates for Product Design</button><button type="button" onClick={() => askManager('Detect scheduling conflicts')}>Detect scheduling conflicts</button><button type="button" onClick={() => askManager('What is the current placement bottleneck?')}>What is the current placement bottleneck?</button></div>{assistantLoading && <div className="manager-loading">Analyzing placement data...</div>}{assistantResponse && <div className="manager-response"><span className="recruiter-eyebrow">AI insight</span><p>{assistantResponse}</p></div>}<div className="manager-input"><input value={assistantQuestion} onChange={(event) => setAssistantQuestion(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && askManager()} placeholder="Ask placement manager..." /><button type="button" onClick={() => askManager()}>→</button></div></section></div>}{driveModalOpen && <div className="recruiter-overlay" onClick={() => setDriveModalOpen(false)}><section className="drive-modal" onClick={(event) => event.stopPropagation()}><button type="button" className="close-manager" onClick={() => setDriveModalOpen(false)}>×</button><span className="recruiter-eyebrow">New placement drive</span><h2>Turn a job description into a live drive.</h2><p>Paste a description and AI will extract eligibility, required skills, and conditions for review.</p><textarea placeholder="Paste job description here..." /><div className="drive-fields"><label>Minimum CGPA<input defaultValue="7.5" /></label><label>Graduation year<input defaultValue="2026" /></label><label>Branches<input defaultValue="Computer Science, Information Science" /></label></div><button type="button" className="recruiter-primary" onClick={() => setDriveModalOpen(false)}>Extract requirements with AI ✦</button></section></div>}</div>
+  return (
+    <div className="recruiter-home">
+      <aside className="recruiter-sidebar">
+        <a className="recruiter-brand" href="/" aria-label="Campus placement home">
+          <span className="recruiter-symbol">CP</span>
+          <span>Campus placement</span>
+        </a>
+        <div className="recruiter-identity">
+          <span className="recruiter-avatar">{profile?.name?.substring(0, 2).toUpperCase()}</span>
+          <div>
+            <strong>{profile?.name || 'Recruiter'}</strong>
+            <small>Recruiter admin</small>
+          </div>
+        </div>
+        <nav className="recruiter-nav" aria-label="Recruiter navigation">
+          {navItems.map(([id, label, icon]) => (
+            <button
+              key={id}
+              type="button"
+              className={activeView === id ? 'active' : ''}
+              onClick={() => setActiveView(id)}
+            >
+              <span>{icon}</span>{label}
+            </button>
+          ))}
+        </nav>
+        <button type="button" className="manager-rail" onClick={() => setAssistantOpen(true)}>
+          <span>✦</span>
+          <div>
+            <strong>Placement manager</strong>
+            <small>Ask about your data</small>
+          </div>
+        </button>
+        <button type="button" className="recruiter-signout" onClick={handleLogout}>
+          ↪ <span>Sign out</span>
+        </button>
+      </aside>
+
+      <main className="recruiter-content">
+        <header className="recruiter-header">
+          <span className="mobile-recruiter-label">Recruiter workspace</span>
+          <button type="button" className="recruiter-alert" aria-label="Alerts">♧<b>{applications.filter(a => a.status === 'pending').length}</b></button>
+        </header>
+        <div className="recruiter-page">
+          {activeView === 'overview' && renderOverview()}
+          {activeView === 'drives' && renderDrives()}
+          {activeView === 'students' && renderStudents()}
+          {activeView === 'applications' && renderApplications()}
+          {activeView === 'assessments' && <section className="recruiter-view"><p>Test Management - Coming Soon</p></section>}
+          {activeView === 'interviews' && <section className="recruiter-view"><p>Interview Management - Coming Soon</p></section>}
+          {activeView === 'analytics' && renderAnalytics()}
+          {activeView === 'settings' && renderSettings()}
+        </div>
+      </main>
+
+      {assistantOpen && (
+        <div className="recruiter-overlay" onClick={() => setAssistantOpen(false)}>
+          <section className="manager-panel" onClick={(event) => event.stopPropagation()}>
+            <div className="manager-head">
+              <div>
+                <span className="recruiter-eyebrow">AI placement manager</span>
+                <h2>What should we inspect?</h2>
+              </div>
+              <button type="button" className="close-manager" onClick={() => setAssistantOpen(false)}>×</button>
+            </div>
+            <p>Ask about eligible candidates, bottlenecks, insights, or recommendations.</p>
+            <div className="manager-prompts">
+              <button type="button" onClick={() => askManager('Find the best candidates for the latest drive')}>Find top candidates</button>
+              <button type="button" onClick={() => askManager('Detect scheduling conflicts')}>Detect conflicts</button>
+              <button type="button" onClick={() => askManager('What is the current placement bottleneck?')}>Identify bottlenecks</button>
+            </div>
+            {assistantLoading && <div className="manager-loading">Analyzing placement data...</div>}
+            {assistantResponse && (
+              <div className="manager-response">
+                <span className="recruiter-eyebrow">AI insight</span>
+                <p>{assistantResponse}</p>
+              </div>
+            )}
+            <div className="manager-input">
+              <input value={assistantQuestion} onChange={(event) => setAssistantQuestion(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && askManager()} placeholder="Ask placement manager..." />
+              <button type="button" onClick={() => askManager()}>→</button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {driveModalOpen && (
+        <div className="recruiter-overlay" onClick={() => setDriveModalOpen(false)}>
+          <section className="drive-modal" onClick={(event) => event.stopPropagation()}>
+            <button type="button" className="close-manager" onClick={() => setDriveModalOpen(false)}>×</button>
+            <span className="recruiter-eyebrow">New placement drive</span>
+            <h2>Turn a job description into a live drive.</h2>
+            <p>Paste a description and AI will extract eligibility and skills.</p>
+            <textarea placeholder="Job title" value={newDrive.title} onChange={(e) => setNewDrive({...newDrive, title: e.target.value})} />
+            <textarea placeholder="Company name" value={newDrive.company_name} onChange={(e) => setNewDrive({...newDrive, company_name: e.target.value})} />
+            <textarea placeholder="Paste job description here..." value={newDrive.job_description} onChange={(e) => setNewDrive({...newDrive, job_description: e.target.value})} />
+            <div className="drive-fields">
+              <label>Minimum CGPA<input type="number" value={newDrive.min_cgpa} onChange={(e) => setNewDrive({...newDrive, min_cgpa: parseFloat(e.target.value)})} /></label>
+              <label>Application Deadline<input type="date" value={newDrive.application_deadline} onChange={(e) => setNewDrive({...newDrive, application_deadline: e.target.value})} /></label>
+            </div>
+            <button type="button" className="recruiter-primary" onClick={handleCreateDrive}>Extract requirements with AI ✦</button>
+          </section>
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default RecruiterHome

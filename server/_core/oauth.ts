@@ -23,7 +23,7 @@ export function registerOAuthRoutes(app: Express) {
     // CSRF guard: the nonce in `state` must match the one-time cookie that
     // startLogin set in the browser that began this login. An attacker can
     // forge `state`, but cannot plant this cookie in the victim's browser.
-    const { nonce } = decodeOAuthState(state);
+    const { nonce, placementRole } = decodeOAuthState(state);
     const expectedNonce = parseCookieHeader(req.headers.cookie ?? "")[OAUTH_STATE_COOKIE];
     if (!nonce || nonce !== expectedNonce) {
       res.status(403).json({ error: "invalid oauth state" });
@@ -45,6 +45,7 @@ export function registerOAuthRoutes(app: Express) {
         name: userInfo.name || null,
         email: userInfo.email ?? null,
         loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
+        placementRole: placementRole === "recruiter" ? "recruiter" : "candidate",
         lastSignedIn: new Date(),
       });
 

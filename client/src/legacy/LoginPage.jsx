@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
+import { startLogin } from '../const'
 
 const roles = {
   candidate: {
@@ -95,13 +96,13 @@ function LoginPage() {
   const handleSubmit = (event) => {
     event.preventDefault()
     if (!selectedRole) return
-    console.log(`Login as ${selectedRole} with`, form)
+    startLogin(selectedRole)
   }
 
   const handleCreateAccount = (event) => {
     event.preventDefault()
-    setAccountCreated(true)
-    console.log('Create account for', signUpForm)
+    if (!selectedRole) return
+    startLogin(signUpForm.role.toLowerCase() === 'recruiter' ? 'recruiter' : 'candidate', 'signUp')
   }
 
   const openCreateAccount = () => {

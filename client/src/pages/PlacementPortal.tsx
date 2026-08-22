@@ -26,13 +26,7 @@ function LegacyLanding() {
     return () => window.removeEventListener("placement-auth-config-error", onConfigError);
   }, []);
 
-  return <div onSubmitCapture={(event) => {
-    const target = event.target as HTMLFormElement;
-    if (target.matches("form.login-form")) {
-      event.preventDefault();
-      startLogin();
-    }
-  }}>{authConfigError && <p className="auth-config-error">Sign-in is temporarily unavailable because this deployment is missing its OAuth configuration.</p>}<LegacyLoginPage /></div>;
+  return <div>{authConfigError && <p className="auth-config-error">Sign-in is temporarily unavailable because this deployment is missing its OAuth configuration.</p>}<LegacyLoginPage /></div>;
 }
 
 function ProtectedPortal({ role }: { role: PlacementRole }) {
@@ -42,7 +36,7 @@ function ProtectedPortal({ role }: { role: PlacementRole }) {
   useEffect(() => {
     if (loading) return;
     if (!user) {
-      startLogin();
+      startLogin(role);
       return;
     }
     if (user.placementRole !== role) {

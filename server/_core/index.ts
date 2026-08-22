@@ -33,8 +33,7 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
  * The app is intentionally created without a port listener so Vercel can import it
  * as a serverless function.
  */
-export function createApp() {
-  const app = express();
+export function createApp(app = express()) {
 
   // Configure body parser with larger size limit for file uploads.
   app.use(express.json({ limit: "50mb" }));

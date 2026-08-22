@@ -1,7 +1,8 @@
+import express from "express";
 import { createApp } from "./server/_core/index";
 import { serveStatic } from "./server/_core/vite";
 
-const app = createApp();
+const app = createApp(express());
 serveStatic(app);
 
 // Vercel captures this listener as the project’s single Node.js server function.

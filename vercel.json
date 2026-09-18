@@ -9,6 +9,7 @@
     { "source": "/api/oauth", "destination": "/api/index?path=oauth" },
     { "source": "/api/oauth/:path*", "destination": "/api/index?path=oauth/:path*" },
     { "source": "/candidate", "destination": "/" },
-    { "source": "/recruiter", "destination": "/" }
+    { "source": "/recruiter", "destination": "/" },
+    { "source": "/nightshift", "destination": "/" }
   ]
 }
